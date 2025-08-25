@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Generar Certificados Laborales</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #555;
+      }
+      input[type="text"], input[type="number"], select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
+      input[type="text"]:focus, input[type="number"]:focus, select:focus {
+        border-color: #4CAF50;
+        outline: none;
+      }
+      .info-section {
+        background-color: #e8f5e8;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+        border-left: 4px solid #4CAF50;
+      }
+      .hidden {
+        display: none;
+      }
+      button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .error {
+        color: #d32f2f;
+        background-color: #ffebee;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Generar Certificados Laborales</h1>
+      <form action="/generar" method="post" id="certificateForm">
+        <div class="form-group">
+          <label for="cedula">Cédula:</label>
+          <input 
+            type="text" 
+            id="cedula" 
+            name="cedula" 
+            required 
+            placeholder="Ingrese número de cédula"
+            onchange="verificarCedula()"
+          >
+        </div>
+
+        <!-- Información del cargo (oculta por defecto) -->
+        <div id="info-cargo" class="info-section hidden">
+          <h3>Información del Empleado</h3>
+          <p id="cargo-text"></p>
+
+          <!-- Selector de Tipo de Contrato -->
+          <div class="form-group">
+            <label for="tipo_contrato">Tipo de Contrato:</label>
+            <select id="tipo_contrato" name="tipo_contrato">
+              <option value="Obra o Labor">Obra o Labor</option>
+              <option value="Indefinido">Indefinido</option>
+              <option value="Fijo">Fijo</option>
+            </select>
+          </div>
+
+          <!-- Entrada de salario manual (oculta por defecto) -->
+          <div id="salario-manual-group" class="form-group hidden">
+            <label for="salario-manual">Salario Mensual (opcional):</label>
+            <input 
+              type="text" 
+              id="salario-manual" 
+              name="salario_manual" 
+              placeholder="Ejemplo: $2,400,000"
+            >
+            <small style="color: #666;">Deje vacío para usar el salario registrado en el sistema</small>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn">Generar Certificados</button>
+      </form>
+    </div>
+
+    <script>
+      async function verificarCedula() {
+        const cedulaInput = document.getElementById('cedula');
+        const infoCargo = document.getElementById('info-cargo');
+        const cargoText = document.getElementById('cargo-text');
+        const salarioGroup = document.getElementById('salario-manual-group');
+        const submitBtn = document.getElementById('submitBtn');
+        const cedula = cedulaInput.value.trim();
+        
+        // Limpiar estados anteriores
+        infoCargo.classList.add('hidden');
+        salarioGroup.classList.add('hidden');
+        
+        if (!cedula) {
+          return;
+        }
+
+        try {
+          // Deshabilitar botón mientras verifica
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Verificando...';
+          
+          const response = await fetch('/verificar-cedula', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'cedula=' + encodeURIComponent(cedula)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Mostrar toda la sección de información
+            infoCargo.classList.remove('hidden');
+            cargoText.innerHTML = `<strong>Último cargo:</strong> ${data.ultimo_cargo}<br>
+                                  <strong>Contrato:</strong> ${data.contrato_activo ? 'Activo' : 'Finalizado'}`;
+            
+            const cargosConSalarioManual = ['MANIPULADORA ALIMENTOS', 'MANIPULADORA'];
+            if (cargosConSalarioManual.includes(data.ultimo_cargo) && data.contrato_activo) {
+              salarioGroup.classList.remove('hidden');
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Generar Certificados';
+          } else {
+            const errorData = await response.json();
+            alert('Error: ' + errorData.detail);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Generar Certificados';
+          }
+        } catch (error) {
+          console.error('Error al verificar cédula:', error);
+          alert('Error al verificar la cédula. Por favor, intente nuevamente.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Generar Certificados';
+        }
+      }
+    </script>
+  </body>
+</html>
