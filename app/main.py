@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request, Form, HTTPException
+# V-- NUEVA LÍNEA: Importar StaticFiles
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from app.services import sheets_service, drive_service
@@ -12,24 +14,32 @@ from num2words import num2words
 
 # Configurar localización para español
 try:
-    # Intentar configurar locale español (Linux/Mac)
     locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
 except locale.Error:
     try:
-        # Fallback para Windows
         locale.setlocale(locale.LC_TIME, 'Spanish_Spain.1252')
     except locale.Error:
-        # Si no se puede establecer español, usar C (inglés)
         locale.setlocale(locale.LC_TIME, 'C')
 
 
 app = FastAPI()
+
+# --- BLOQUE AÑADIDO ---
+# Monta la carpeta 'static' que está dentro de 'app' en la ruta URL '/static'
+# Ahora el navegador puede acceder a los archivos pidiendo, por ejemplo, http://127.0.0.1:8000/static/mi_imagen.svg
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# --- FIN DEL BLOQUE AÑADIDO ---
+
+
 templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     """Muestra el formulario para ingresar la cédula."""
     return templates.TemplateResponse("form.html", {"request": request})
+
+# ... (el resto del archivo main.py permanece exactamente igual) ...
+# (No es necesario que lo pegues aquí, solo asegúrate de que el resto del código siga ahí)
 
 @app.post("/verificar-cedula")
 def verificar_cedula(cedula: str = Form(...)):
@@ -274,25 +284,160 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
     if not generated_files:
         raise HTTPException(status_code=500, detail="No se pudo generar ningún certificado")
     
-    # Crear lista HTML de archivos generados
+    # --- INICIO DEL BLOQUE DE RESPUESTA HTML MEJORADO ---
+    
     file_list_html = ""
+    success_count = 0
+    
     for file_info in generated_files:
         if file_info["link"]:
-            file_list_html += f'<li><strong>{file_info["empresa"]}</strong>: <a href="{file_info["link"]}" target="_blank">{file_info["filename"]}</a></li>'
+            success_count += 1
+            file_list_html += f"""
+                <li class="success">
+                    <span class="icon">📄</span>
+                    <div class="details">
+                        <strong>{file_info["empresa"]}</strong>
+                        <span>{file_info["filename"]}</span>
+                    </div>
+                    <a href="{file_info['link']}" target="_blank" class="download-link">Ver / Descargar</a>
+                </li>
+            """
         else:
-            file_list_html += f'<li><strong>{file_info["empresa"]}</strong>: {file_info["filename"]}</li>'
-    
+            file_list_html += f"""
+                <li class="error">
+                    <span class="icon">❌</span>
+                    <div class="details">
+                        <strong>{file_info["empresa"]}</strong>
+                        <span>{file_info["filename"]}</span>
+                    </div>
+                </li>
+            """
+
     return HTMLResponse(content=f"""
+        <!doctype html>
         <html>
-            <head><title>Certificados Generados</title></head>
+            <head>
+                <meta charset="utf-8">
+                <title>Certificados Generados</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f5f5f5;
+                        margin: 0;
+                        padding: 40px 20px;
+                        display: flex;
+                        justify-content: center;
+                        align-items: flex-start;
+                        min-height: 100vh;
+                    }}
+                    .container {{
+                        background-color: white;
+                        max-width: 700px;
+                        width: 100%;
+                        padding: 30px 40px;
+                        border-radius: 10px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }}
+                    h1 {{
+                        color: #4CAF50;
+                        font-size: 28px;
+                        margin-bottom: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                    }}
+                    .summary {{
+                        color: #555;
+                        font-size: 18px;
+                        margin-bottom: 30px;
+                    }}
+                    ul {{
+                        list-style-type: none;
+                        padding: 0;
+                        margin: 0;
+                    }}
+                    li {{
+                        display: flex;
+                        align-items: center;
+                        text-align: left;
+                        padding: 15px;
+                        margin-bottom: 15px;
+                        border-radius: 8px;
+                        border: 1px solid #ddd;
+                        transition: box-shadow 0.2s;
+                    }}
+                    li:hover {{
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+                    }}
+                    li.success {{
+                        border-left: 5px solid #4CAF50;
+                    }}
+                    li.error {{
+                        border-left: 5px solid #d32f2f;
+                        background-color: #ffebee;
+                    }}
+                    .icon {{
+                        font-size: 24px;
+                        margin-right: 15px;
+                    }}
+                    .details {{
+                        display: flex;
+                        flex-direction: column;
+                        flex-grow: 1;
+                    }}
+                    .details strong {{
+                        color: #333;
+                        font-size: 16px;
+                    }}
+                    .details span {{
+                        color: #777;
+                        font-size: 13px;
+                        word-break: break-all;
+                    }}
+                    .download-link {{
+                        background-color: #e8f5e8;
+                        color: #4CAF50;
+                        padding: 8px 15px;
+                        border-radius: 20px;
+                        text-decoration: none;
+                        font-weight: bold;
+                        font-size: 14px;
+                        white-space: nowrap;
+                        transition: background-color 0.2s;
+                    }}
+                    .download-link:hover {{
+                        background-color: #d1e7d2;
+                    }}
+                    .btn-back {{
+                        display: inline-block;
+                        margin-top: 30px;
+                        background-color: #4CAF50;
+                        color: white;
+                        padding: 12px 30px;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        text-decoration: none;
+                        transition: background-color 0.2s;
+                    }}
+                    .btn-back:hover {{
+                        background-color: #45a049;
+                    }}
+                </style>
+            </head>
             <body>
-                <h1>Certificados generados y subidos con éxito!</h1>
-                <p>Se generaron {len([f for f in generated_files if f["link"]])} certificados:</p>
-                <ul>
-                    {file_list_html}
-                </ul>
-                <br>
-                <a href="/">Generar otros certificados</a>
+                <div class="container">
+                    <h1><span class="icon-title">✅</span>Proceso Completado</h1>
+                    <p class="summary">Se generaron <strong>{success_count}</strong> certificados con éxito.</p>
+                    <ul>
+                        {file_list_html}
+                    </ul>
+                    <a href="/" class="btn-back">Generar Otros Certificados</a>
+                </div>
             </body>
         </html>
     """)
+    # --- FIN DEL BLOQUE DE RESPUESTA HTML MEJORADO ---
