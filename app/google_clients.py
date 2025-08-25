@@ -12,6 +12,11 @@ SCOPES = [
 
 def get_credentials():
     raw = settings.GOOGLE_CREDENTIALS_JSON
+    # --- INICIO DEL CÓDIGO DE DEPURACIÓN ---
+    print("--- DEBUG: Verificando el contenido de GOOGLE_CREDENTIALS_JSON ---")
+    print(f"El contenido recibido es: '{raw}'")
+    print(f"La longitud del contenido es: {len(raw)}")
+    # --- FIN DEL CÓDIGO DE DEPURACIÓN ---
     info = json.loads(raw)
     return Credentials.from_service_account_info(info, scopes=SCOPES)
 
