@@ -1,12 +1,12 @@
 
-# ---- Fase 1: Construir el Entorno ----
-# Usamos una imagen oficial de Python como base
+# ---- Fase 1: Construir el Entorno Base con Idioma Español ----
+
+# Usamos una imagen oficial de Python, ligera y optimizada
 FROM python:3.11-slim
 
-# Establecemos el directorio de trabajo dentro del contenedor
+# Establecemos el directorio de trabajo principal dentro del contenedor
 WORKDIR /app
 
-# ---- ¡LA PARTE MÁGICA! ----
 # Instalamos los paquetes de idioma español ANTES de hacer cualquier otra cosa
 # Esto se ejecuta como administrador (root), por lo que sí tenemos permisos
 RUN apt-get update && apt-get install -y locales && \
@@ -14,24 +14,35 @@ RUN apt-get update && apt-get install -y locales && \
     dpkg-reconfigure --frontend=noninteractive locales
 
 # Configuramos las variables de entorno para que todo el sistema use español
+# Esto garantiza que locale.setlocale() en Python funcione correctamente
 ENV LANG es_ES.UTF-8
 ENV LANGUAGE es_ES:es
 ENV LC_ALL es_ES.UTF-8
 
+
 # ---- Fase 2: Preparar la Aplicación ----
-# Copiamos primero el archivo de requerimientos
+
+# Copiamos primero el archivo de requerimientos para optimizar el cache de Docker
 COPY requirements.txt .
 
 # Instalamos las dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiamos el resto del código de nuestra aplicación
+# Copiamos la carpeta principal de la aplicación
 COPY ./app /app/app
 
+# ¡LÍNEA CORREGIDA! Copiamos la carpeta con la imagen de la firma
+# Sin esta línea, la imagen de la firma no existe dentro del contenedor
+COPY ./firma /app/firma
+
+
 # ---- Fase 3: Ejecutar la Aplicación ----
-# Exponemos el puerto que Render usará (Render asigna el valor a $PORT)
+
+# Exponemos el puerto que Render usará para comunicarse con nuestra aplicación
+# Render asignará dinámicamente el valor a la variable de entorno $PORT
 EXPOSE 10000
 
-# El comando para iniciar la aplicación cuando el contenedor se ponga en marcha
-# Uvicorn se enlaza a 0.0.0.0 para ser accesible desde fuera del contenedor
+# El comando final para iniciar el servidor Uvicorn cuando el contenedor se ponga en marcha
+# Se enlaza a 0.0.0.0 para ser accesible desde fuera del contenedor y usa el puerto 10000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
+
