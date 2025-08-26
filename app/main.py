@@ -217,7 +217,7 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
             if cargo in cargos_pae:
                 texto_adicional = "en el programa de alimentación escolar PAE."
             else:
-                texto_adicional = f"en la {canonical_company_name}."
+                texto_adicional = "."
             
             # Buscar NIT de la empresa usando el nombre canónico
             company_info = company_info_lookup.get(canonical_company_name)

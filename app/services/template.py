@@ -54,7 +54,7 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     story.append(Paragraph(intro_text, style_body))
     story.append(Paragraph(datos["periodos"], style_periods))
     if datos.get('texto_adicional'):
-        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor')
+        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor contratada')
         texto_dinamico = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
         story.append(Paragraph(texto_dinamico, style_body))
     if datos.get("salario_num"):
@@ -79,7 +79,7 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
             # --- LÍNEA CORREGIDA ---
             # Se quita el argumento 'preserveAspectRatio' y 'height'.
             # Al dar solo el ancho, la altura se ajusta automáticamente manteniendo la proporción.
-            firma_img = Image(firma_path, width=2.5*inch)
+            firma_img = Image(firma_path, width=3.5*inch, height= 1*inch)
             firma_img.hAlign = 'LEFT'
             story.append(firma_img)
         else:
