@@ -54,7 +54,7 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     story.append(Paragraph(intro_text, style_body))
     story.append(Paragraph(datos["periodos"], style_periods))
     if datos.get('texto_adicional'):
-        contrato_seleccionado = datos.get('tipo_contrato', 'Obra o Labor')
+        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor')
         texto_dinamico = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
         story.append(Paragraph(texto_dinamico, style_body))
     if datos.get("salario_num"):
