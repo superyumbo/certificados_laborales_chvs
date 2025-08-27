@@ -85,22 +85,35 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     # Párrafo para el periodo activo (si existe)
     if datos.get("periodo_activo_data"):
         activo_data = datos["periodo_activo_data"]
-        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor')
         
         # Construcción del párrafo para el periodo activo
         if datos.get("periodos_cerrados_html"):
             # Si hubo periodos cerrados, empieza con "Además,"
             texto_activo = (
                 f"Además, desde el {activo_data['fecha_ingreso']} hasta la fecha se encuentra laborando en el cargo "
-                f"de {activo_data['cargo']}, mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+                f"de {activo_data['cargo']}."
             )
         else:
             # Si es el único periodo, es más directo
             texto_activo = (
                 f"Actualmente y desde el {activo_data['fecha_ingreso']}, se encuentra laborando en el cargo "
-                f"de {activo_data['cargo']}, mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+                f"de {activo_data['cargo']}."
             )
         story.append(Paragraph(texto_activo, style_body))
+    
+    # --- AJUSTE DE LÓGICA PARA EL TIPO DE CONTRATO ---
+    # Este párrafo ahora se muestra siempre, con una redacción adaptada.
+    contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor')
+    
+    if datos.get("periodo_activo_data"):
+        # Redacción para empleados activos
+        texto_contrato = f"Desempeña sus funciones mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+    else:
+        # Redacción para ex-empleados, refiriéndose a su último contrato
+        texto_contrato = f"Su último vínculo laboral fue mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+        
+    story.append(Paragraph(texto_contrato, style_body))
+    # --- FIN DEL AJUSTE ---
     if datos.get("salario_num"):
         salario_text = (f"Con un salario básico mensual de <b>{datos['salario_num']}</b> (<b>{datos['salario_letras']}</b>).")
         story.append(Paragraph(salario_text, style_body))

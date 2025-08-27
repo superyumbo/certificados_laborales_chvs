@@ -172,30 +172,32 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
             periodos_cerrados = []
             periodo_activo = None
             
-            for contract in contracts:
+            # Ordenar contratos por fecha de ingreso para asegurar un historial cronológico
+            sorted_contracts = sorted(contracts, key=lambda x: x.get("Fecha de Ingreso", ""))
+
+            for contract in sorted_contracts:
                 fecha_ingreso_raw = contract.get("Fecha de Ingreso", "")
                 fecha_retiro_raw = contract.get("Fecha de Retiro", "")
                 cargo_periodo = contract.get("Desc. Cargo", "No especificado")
                 
-                # Formatear fechas usando la función helper
                 fecha_ingreso_formateada = format_date_str(fecha_ingreso_raw)
-                fecha_retiro_formateada = format_date_str(fecha_retiro_raw)
                 
-                # Verificar si tiene fecha de retiro
                 if fecha_retiro_raw and str(fecha_retiro_raw).strip():
-                    # Contrato cerrado
-                    periodo = f"• Desde el {fecha_ingreso_formateada} hasta el {fecha_retiro_formateada}"
+                    fecha_retiro_formateada = format_date_str(fecha_retiro_raw)
+                    # --- CORRECCIÓN CLAVE ---
+                    # Se asegura que el string del periodo cerrado incluya el cargo.
+                    periodo = f"• Desde el {fecha_ingreso_formateada} hasta el {fecha_retiro_formateada} en el cargo de {cargo_periodo}"
                     if periodo not in periodos_cerrados:
                         periodos_cerrados.append(periodo)
                 else:
-                    # Contrato activo
+                    # Este es el contrato activo
                     periodo_activo = {
                         'fecha_ingreso': fecha_ingreso_formateada,
                         'cargo': cargo_periodo
                     }
             
-            # Obtener datos más recientes (del último contrato)
-            latest_contract = contracts[-1]
+            # Usar el último contrato de la lista ordenada para determinar los detalles finales
+            latest_contract = sorted_contracts[-1]
             cargo = latest_contract.get("Desc. Cargo", "No especificado")
             
             # Determinar si el último contrato está activo
