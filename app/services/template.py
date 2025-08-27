@@ -10,9 +10,26 @@ from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, 
 def draw_static_elements(canvas, doc):
     canvas.saveState()
     width, height = LETTER
+    
+    # --- DIBUJO DE NÚMERO DE PÁGINA (EXISTENTE) ---
     canvas.setFont("Helvetica", 9)
     page_num = f"Página {doc.page}"
     canvas.drawRightString(width - inch, 0.75 * inch, page_num)
+    
+    # --- INICIO DE CÓDIGO NUEVO PARA EL PIE DE PÁGINA ---
+    # Define el texto y el estilo para el pie de página
+    footer_text1 = "Calle 15 # 26-101 BODEGA 34 COMPLEJO INDUSTRIAL Y COMERCIAL CIC 1"
+    footer_text2 = "YUMBO-VALLE"
+    
+    # Configura la fuente y el tamaño
+    canvas.setFont("Helvetica", 9)
+    
+    # Dibuja las dos líneas de texto centradas en la parte inferior de la página
+    # La coordenada Y se calcula desde el borde inferior
+    canvas.drawCentredString(width / 2.0, 0.60 * inch, footer_text1)
+    canvas.drawCentredString(width / 2.0, 0.45 * inch, footer_text2)
+    # --- FIN DE CÓDIGO NUEVO ---
+    
     canvas.restoreState()
 
 def generar_certificado_en_memoria(datos: dict) -> BytesIO:
@@ -30,11 +47,12 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     page_template = PageTemplate(id='main_template', frames=[content_frame], onPage=draw_static_elements)
     doc.addPageTemplates([page_template])
 
+    # === DEFINICIÓN DE ESTILOS PROFESIONALES ===
     styles = getSampleStyleSheet()
-    style_body = ParagraphStyle('Body', parent=styles['Normal'], alignment=TA_JUSTIFY, fontSize=11, leading=18, spaceAfter=12)
-    style_periods = ParagraphStyle('Periods', parent=style_body, leftIndent=0.3*inch, fontSize=10)
+    style_body = ParagraphStyle('Body', parent=styles['Normal'], alignment=TA_JUSTIFY, fontSize=12, leading=18, spaceAfter=12)
+    style_periods = ParagraphStyle('Periods', parent=style_body, leftIndent=0.3*inch, fontSize=12)
     style_header = ParagraphStyle('Header', parent=styles['Normal'], alignment=TA_CENTER, fontSize=12, spaceAfter=6, fontName='Helvetica-Bold')
-    style_signature = ParagraphStyle('Signature', parent=styles['Normal'], fontSize=11, alignment=TA_LEFT, spaceAfter=6, fontName='Helvetica-Bold')
+    style_signature = ParagraphStyle('Signature', parent=styles['Normal'], fontSize=12, alignment=TA_LEFT, spaceAfter=6, fontName='Helvetica-Bold', spaceBefore=0)
     style_contact = ParagraphStyle('Contact', parent=styles['Normal'], fontSize=10, alignment=TA_LEFT, spaceAfter=3)
     style_address = ParagraphStyle('Address', parent=styles['Normal'], fontSize=9, alignment=TA_CENTER, spaceAfter=3)
 
@@ -46,17 +64,43 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     story.append(Paragraph(datos.get("nit_empresa", ""), ParagraphStyle(name='CompNIT', parent=styles['Normal'], alignment=TA_CENTER, spaceAfter=24, fontSize=18)))
     story.append(Paragraph("<b>CERTIFICA QUE</b>", style_header))
     story.append(Spacer(1, 18))
+    
+    # Párrafo de introducción (sin cambios)
     intro_text = (
         f"El(la) Señor(a) <b>{datos['nombre']}</b> identificado(a) con Cédula de "
-        f"Ciudadanía No <b>{datos['cedula']}</b> prestó sus servicios para esta empresa "
-        f"en los siguientes periodos:"
+        f"Ciudadanía No <b>{datos['cedula']}</b> prestó sus servicios para esta empresa."
     )
-    story.append(Paragraph(intro_text, style_body))
-    story.append(Paragraph(datos["periodos"], style_periods))
-    if datos.get('texto_adicional'):
-        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor contratada')
-        texto_dinamico = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
-        story.append(Paragraph(texto_dinamico, style_body))
+    # Si hay periodos cerrados, se ajusta el texto de introducción
+    if datos.get("periodos_cerrados_html"):
+        intro_text = (
+            f"El(la) Señor(a) <b>{datos['nombre']}</b> identificado(a) con Cédula de "
+            f"Ciudadanía No <b>{datos['cedula']}</b> prestó sus servicios para esta empresa "
+            f"en los siguientes periodos:"
+        )
+        story.append(Paragraph(intro_text, style_body))
+        story.append(Paragraph(datos["periodos_cerrados_html"], style_periods))
+    else:
+         story.append(Paragraph(intro_text, style_body))
+
+    # Párrafo para el periodo activo (si existe)
+    if datos.get("periodo_activo_data"):
+        activo_data = datos["periodo_activo_data"]
+        contrato_seleccionado = datos.get('tipo_contrato', 'de Obra o Labor')
+        
+        # Construcción del párrafo para el periodo activo
+        if datos.get("periodos_cerrados_html"):
+            # Si hubo periodos cerrados, empieza con "Además,"
+            texto_activo = (
+                f"Además, desde el {activo_data['fecha_ingreso']} hasta la fecha se encuentra laborando en el cargo "
+                f"de {activo_data['cargo']}, mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+            )
+        else:
+            # Si es el único periodo, es más directo
+            texto_activo = (
+                f"Actualmente y desde el {activo_data['fecha_ingreso']}, se encuentra laborando en el cargo "
+                f"de {activo_data['cargo']}, mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+            )
+        story.append(Paragraph(texto_activo, style_body))
     if datos.get("salario_num"):
         salario_text = (f"Con un salario básico mensual de <b>{datos['salario_num']}</b> (<b>{datos['salario_letras']}</b>).")
         story.append(Paragraph(salario_text, style_body))
@@ -73,13 +117,13 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     # --- INICIO DEL BLOQUE MODIFICADO ---
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        firma_path = os.path.join(base_dir, 'firma', 'firma.jpg')
+        firma_path = os.path.join(base_dir, 'firma', 'firma.png')
 
         if os.path.exists(firma_path):
             # --- LÍNEA CORREGIDA ---
             # Se quita el argumento 'preserveAspectRatio' y 'height'.
             # Al dar solo el ancho, la altura se ajusta automáticamente manteniendo la proporción.
-            firma_img = Image(firma_path, width=3.5*inch, height= 1*inch)
+            firma_img = Image(firma_path, width=3.2*inch, height=0.7*inch)  # Ajusta el tamaño según sea necesario
             firma_img.hAlign = 'LEFT'
             story.append(firma_img)
         else:
@@ -96,8 +140,6 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     story.append(Paragraph("Celular: 316 421 95 23", style_contact))
     story.append(Paragraph("Yumbo - Valle del Cauca", style_contact))
     story.append(Spacer(1, 12))
-    story.append(Paragraph("Calle 15 # 26-101 BODEGA 34 COMPLEJO INDUSTRIAL Y COMERCIAL CIC 1", style_address))
-    story.append(Paragraph("YUMBO-VALLE", style_address))
 
     doc.build(story)
     buf.seek(0)

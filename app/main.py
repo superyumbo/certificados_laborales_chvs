@@ -168,8 +168,10 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
             # Obtener nombre del empleado (usar el del primer contrato)
             nombre_completo = contracts[0].get("Nombre del empleado", "Desconocido")
             
-            # Consolidar períodos de trabajo para esta empresa con cargos
-            periodos_empresa = []
+            # Separar periodos activos de los cerrados
+            periodos_cerrados = []
+            periodo_activo = None
+            
             for contract in contracts:
                 fecha_ingreso_raw = contract.get("Fecha de Ingreso", "")
                 fecha_retiro_raw = contract.get("Fecha de Retiro", "")
@@ -179,16 +181,18 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
                 fecha_ingreso_formateada = format_date_str(fecha_ingreso_raw)
                 fecha_retiro_formateada = format_date_str(fecha_retiro_raw)
                 
+                # Verificar si tiene fecha de retiro
                 if fecha_retiro_raw and str(fecha_retiro_raw).strip():
-                    periodo = f"• Desde el {fecha_ingreso_formateada} hasta el {fecha_retiro_formateada} en el cargo de {cargo_periodo}"
+                    # Contrato cerrado
+                    periodo = f"• Desde el {fecha_ingreso_formateada} hasta el {fecha_retiro_formateada}"
+                    if periodo not in periodos_cerrados:
+                        periodos_cerrados.append(periodo)
                 else:
-                    periodo = f"• Desde el {fecha_ingreso_formateada} hasta la actualidad en el cargo de {cargo_periodo}"
-                if periodo not in periodos_empresa:
-                    periodos_empresa.append(periodo)
-                
-                          
-            # Consolidar en texto único usando <br/> para saltos de línea en Paragraph
-            periodo_consolidado = "<br/>".join(periodos_empresa)
+                    # Contrato activo
+                    periodo_activo = {
+                        'fecha_ingreso': fecha_ingreso_formateada,
+                        'cargo': cargo_periodo
+                    }
             
             # Obtener datos más recientes (del último contrato)
             latest_contract = contracts[-1]
@@ -240,7 +244,8 @@ def generate_pdf_and_upload(cedula: str = Form(...), salario_manual: Optional[st
             datos_plantilla = {
                 "nombre": nombre_completo,
                 "cedula": cedula,
-                "periodos": periodo_consolidado,
+                "periodos_cerrados_html": "<br/>".join(periodos_cerrados) if periodos_cerrados else None,
+                "periodo_activo_data": periodo_activo,
                 "cargo": cargo,
                 "salario_num": salario_final_num,
                 "salario_letras": salario_final_letras,
