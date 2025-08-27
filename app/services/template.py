@@ -107,10 +107,10 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
     
     if datos.get("periodo_activo_data"):
         # Redacción para empleados activos
-        texto_contrato = f"Desempeña sus funciones mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+        texto_contrato = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
     else:
         # Redacción para ex-empleados, refiriéndose a su último contrato
-        texto_contrato = f"Su último vínculo laboral fue mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
+        texto_contrato = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
         
     story.append(Paragraph(texto_contrato, style_body))
     # --- FIN DEL AJUSTE ---
