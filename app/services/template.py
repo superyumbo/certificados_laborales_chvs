@@ -113,10 +113,30 @@ def generar_certificado_en_memoria(datos: dict) -> BytesIO:
         texto_contrato = f"Mediante contrato <b>{contrato_seleccionado}</b> {datos['texto_adicional']}"
         
     story.append(Paragraph(texto_contrato, style_body))
-    # --- FIN DEL AJUSTE ---
+    
+    # condición interna para cambiar el texto del salario.
     if datos.get("salario_num"):
-        salario_text = (f"Con un salario básico mensual de <b>{datos['salario_num']}</b> (<b>{datos['salario_letras']}</b>).")
-        story.append(Paragraph(salario_text, style_body))
+        # Lista de cargos que usan la redacción de "ingreso promedio"
+        cargos_con_ingreso_promedio = ["MANIPULADORA ALIMENTOS", "MANIPULADORA"]
+        
+        # El cargo se obtiene de los datos que vienen de main.py
+        cargo_actual = datos.get("cargo")
+        
+        if cargo_actual in cargos_con_ingreso_promedio:
+            # Texto modificado para el cargo de MANIPULADORA
+            salario_text = (
+                f"Con un ingreso mensual promedio de <b>{datos['salario_num']}</b> "
+                f"(<b>{datos['salario_letras']}</b>) m/cte."
+            )
+        else:
+            # Texto estándar para todos los demás cargos
+            salario_text = (
+                f"Con un salario básico mensual de <b>{datos['salario_num']}</b> "
+                f"(<b>{datos['salario_letras']}</b>)."
+            )
+        
+        story.append(Paragraph(salario_text, style_body))           
+
     cierre_text = (
         f"Para constancia de lo anterior se firma en Yumbo a los "
         f"{datos['dias_texto']} ({datos['dias_numero']}) días del mes de "
